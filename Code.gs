@@ -41,10 +41,10 @@ var ROUNDS = [
 // Column layouts (single source of truth for migration)
 var TEAM_COLS   = ["ID","TeamName","P1Name","P1Email","P1Phone","P1Membership",
                    "P2Name","P2Email","P2Phone","Category","OwnPaddle","Status",
-                   "RegisteredAt","Wins","Losses","Sub1Name","Sub2Name"];
+                   "RegisteredAt","Wins","Losses","Sub1Name","Sub2Name","SkillLevel"];
 var MATCH_COLS  = ["ID","Category","Round","Slot","Team1ID","Team2ID",
                    "G1T1","G1T2","G2T1","G2T2","G3T1","G3T2",
-                   "Score1","Score2","WinnerID","CreatedAt","T1Players","T2Players"];
+                   "Score1","Score2","WinnerID","CreatedAt","T1Players","T2Players","ScheduledTime"];
 
 // =============================================================================
 // ONE-TIME SETUP
@@ -409,6 +409,28 @@ function doGet(e) {
       case "registerTeam":
         return jsonOut(registerTeam(JSON.parse(decodeURIComponent(e.parameter.data || "{}"))));
 
+      case "createManualBracket":
+        return jsonOut(createManualBracket(
+          e.parameter.category,
+          JSON.parse(decodeURIComponent(e.parameter.pairings || "[]"))
+        ));
+
+      case "updateTeamSkill":
+        return jsonOut(updateTeamSkill(e.parameter.teamId, e.parameter.level));
+
+      case "updateMatchSchedule":
+        return jsonOut(updateMatchSchedule(
+          e.parameter.matchId,
+          decodeURIComponent(e.parameter.scheduledTime || ""),
+          e.parameter.notify === "true"
+        ));
+
+      case "autoAssignSchedules":
+        return jsonOut(autoAssignSchedules(
+          e.parameter.category,
+          JSON.parse(decodeURIComponent(e.parameter.roundDates || "{}"))
+        ));
+
       default:
         return jsonOut({ ok: false, msg: "Unknown action: " + action });
     }
@@ -529,17 +551,17 @@ function generateBracket(category) {
       var wid = t2 ? "" : t1.ID;
       ms.appendRow([makeUID(), category, 1, Math.floor(i/2),
         t1.ID, t2 ? t2.ID : "",
-        "","","","","","","","", wid, new Date().toLocaleString(), "", ""]);
+        "","","","","","","","", wid, new Date().toLocaleString(), "", "", ""]);
       r1.push({ slot: Math.floor(i/2), t1: t1, t2: t2, wid: wid });
     }
 
     var r2n = Math.ceil(Math.ceil(seeded.length / 2) / 2);
     var r3n = Math.ceil(r2n / 2);
     for (var j = 0; j < r2n; j++) {
-      ms.appendRow([makeUID(),category,2,j,"","","","","","","","","","","",new Date().toLocaleString(),"",""]);
+      ms.appendRow([makeUID(),category,2,j,"","","","","","","","","","","",new Date().toLocaleString(),"","",""]);
     }
     for (var k = 0; k < r3n; k++) {
-      ms.appendRow([makeUID(),category,3,k,"","","","","","","","","","","",new Date().toLocaleString(),"",""]);
+      ms.appendRow([makeUID(),category,3,k,"","","","","","","","","","","",new Date().toLocaleString(),"","",""]);
     }
 
     r1.forEach(function(m){ if (m.wid) advanceWinner(ss, category, 1, m.slot, m.wid); });
@@ -724,6 +746,208 @@ function mailAndLog(ss, to, subject, body) {
     Logger.log("Mail send failed to " + to + ": " + e.toString());
   }
 }
+
+// =============================================================================
+// MANUAL BRACKET
+// =============================================================================
+
+function createManualBracket(category, pairings) {
+  try {
+    var ss  = getSheet();
+    var ms  = ss.getSheetByName(TAB_MATCHES);
+    var now = new Date().toLocaleString();
+
+    // Clear existing matches for this category
+    if (ms.getLastRow() > 1) {
+      var md = ms.getDataRange().getValues();
+      var ci = md[0].indexOf("Category");
+      for (var x = md.length - 1; x >= 1; x--) {
+        if (String(md[x][ci]) === category) ms.deleteRow(x + 1);
+      }
+    }
+
+    // Round 1 — user-defined pairings
+    for (var i = 0; i < pairings.length; i++) {
+      var p   = pairings[i];
+      var t1  = p.t1 || "";
+      var t2  = p.t2 || "";
+      var wid = (t1 && !t2) ? t1 : ""; // bye → auto-advance
+      ms.appendRow([makeUID(), category, 1, i,
+        t1, t2,
+        "","","","","","","","", wid, now, "", "", ""]);
+    }
+
+    // Round 2 placeholder slots
+    var r2n = Math.ceil(pairings.length / 2);
+    for (var j = 0; j < r2n; j++) {
+      ms.appendRow([makeUID(), category, 2, j,
+        "","","","","","","","","","","", now, "","",""]);
+    }
+
+    // Round 3 placeholder slots
+    var r3n = Math.ceil(r2n / 2);
+    for (var k = 0; k < r3n; k++) {
+      ms.appendRow([makeUID(), category, 3, k,
+        "","","","","","","","","","","", now, "","",""]);
+    }
+
+    // Auto-advance byes into R2
+    var ss2 = getSheet();
+    for (var bi = 0; bi < pairings.length; bi++) {
+      var bp = pairings[bi];
+      if (bp.t1 && !bp.t2) advanceWinner(ss2, category, 1, bi, bp.t1);
+    }
+
+    return { ok: true, msg: "Bracket saved for " + category + "! (" + pairings.length + " R1 matches)" };
+  } catch(e) {
+    return { ok: false, msg: e.toString() };
+  }
+}
+
+// =============================================================================
+// SKILL LEVEL
+// =============================================================================
+
+function updateTeamSkill(teamId, level) {
+  try {
+    var ss = getSheet();
+    updateRow(ss, TAB_TEAMS, teamId, { SkillLevel: level || "" });
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, msg: e.toString() };
+  }
+}
+
+// =============================================================================
+// MATCH SCHEDULING
+// =============================================================================
+
+function updateMatchSchedule(matchId, scheduledTime, notify) {
+  try {
+    var ss = getSheet();
+    updateRow(ss, TAB_MATCHES, matchId, { ScheduledTime: scheduledTime });
+
+    if (notify) {
+      var all   = readRows(ss, TAB_MATCHES);
+      var match = null;
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].ID === String(matchId)) { match = all[i]; break; }
+      }
+      if (match) {
+        var teams = readRows(ss, TAB_TEAMS);
+        var t1 = null, t2 = null;
+        teams.forEach(function(t) {
+          if (t.ID === match.Team1ID) t1 = t;
+          if (t.ID === match.Team2ID) t2 = t;
+        });
+        var rd = ROUNDS[0];
+        ROUNDS.forEach(function(r) { if (r.id === parseInt(match.Round)) rd = r; });
+
+        var subj = "GBC Pickleball — Match Schedule Updated";
+        var body = buildScheduleEmail(t1, t2, rd, scheduledTime);
+
+        [t1, t2].forEach(function(tm) {
+          if (!tm) return;
+          if (isValidEmail(tm.P1Email)) mailAndLog(ss, tm.P1Email, subj, body);
+          if (tm.P2Email && tm.P2Email !== tm.P1Email && isValidEmail(tm.P2Email))
+            mailAndLog(ss, tm.P2Email, subj, body);
+        });
+      }
+    }
+
+    return { ok: true, msg: "Schedule saved." + (notify ? " Notifications sent to both teams." : "") };
+  } catch(e) {
+    return { ok: false, msg: e.toString() };
+  }
+}
+
+function buildScheduleEmail(t1, t2, rd, scheduledTime) {
+  var t1n = t1 ? t1.TeamName : "TBD";
+  var t2n = t2 ? t2.TeamName : "TBD";
+  var dtStr = scheduledTime ? formatDT(scheduledTime) : "TBD";
+  return "Hi!\n\n" +
+    "Your match schedule has been updated.\n\n" +
+    "MATCH:  " + t1n + " vs " + t2n + "\n" +
+    "ROUND:  " + rd.label + "\n" +
+    "WHEN:   " + dtStr + "\n" +
+    "VENUE:  62-B Happy Valley, Cebu City\n\n" +
+    "Please adjust your schedule accordingly.\n" +
+    "Arrive at least 15 minutes before your match time.\n\n" +
+    "God bless and see you on the court!\n" +
+    "GBC Pickleball Club";
+}
+
+function formatDT(dt) {
+  try {
+    var d = new Date(String(dt).replace(" ", "T"));
+    if (isNaN(d.getTime())) return dt;
+    var days   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    var months = ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"];
+    var h = d.getHours(), m = d.getMinutes();
+    var ampm = h >= 12 ? "PM" : "AM";
+    var h12  = h % 12 || 12;
+    return days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate() +
+           ", " + d.getFullYear() + " at " + h12 + ":" + (m < 10 ? "0" + m : m) + " " + ampm;
+  } catch(e) { return dt; }
+}
+
+function autoAssignSchedules(category, roundDates) {
+  // roundDates: {"1":"2026-06-06", "2":"2026-06-13", "3":"2026-06-20"}
+  try {
+    var ss  = getSheet();
+    var all = readRows(ss, TAB_MATCHES);
+    var assigned = 0;
+
+    // Group playable matches (both teams set) by round
+    var byRound = {};
+    all.filter(function(m) { return m.Category === category; })
+       .forEach(function(m) {
+         var r = String(m.Round);
+         if (!byRound[r]) byRound[r] = [];
+         if (m.Team1ID && m.Team2ID) byRound[r].push(m);
+       });
+
+    [1, 2, 3].forEach(function(rnum) {
+      var matches  = byRound[String(rnum)] || [];
+      if (!matches.length) return;
+      var baseDate = String(roundDates[String(rnum)] || roundDates[rnum] || "");
+      if (!baseDate) return;
+
+      var slots = buildTimeSlots(baseDate);
+      matches.forEach(function(m, idx) {
+        var slot = slots[Math.min(idx, slots.length - 1)];
+        updateRow(ss, TAB_MATCHES, m.ID, { ScheduledTime: slot });
+        assigned++;
+      });
+    });
+
+    return { ok: true, msg: "Auto-assigned " + assigned + " matches." };
+  } catch(e) {
+    return { ok: false, msg: e.toString() };
+  }
+}
+
+function buildTimeSlots(dateStr) {
+  // Returns datetime-local strings (YYYY-MM-DDTHH:mm)
+  // Priority 1: 3 pm – 10 pm  (15:00 → 21:30, 14 slots, last match ends 10 pm)
+  // Priority 2: 2 pm – 3 pm   (14:00, 14:30 — post-heat buffer)
+  // Priority 3: 8 am – 11 am  (08:00 → 10:30, 6 slots, avoids 11 am–2 pm peak heat)
+  var slots = [];
+  for (var h = 15; h < 22; h++) {
+    slots.push(dateStr + "T" + zp(h) + ":00");
+    slots.push(dateStr + "T" + zp(h) + ":30");
+  }
+  slots.push(dateStr + "T14:00");
+  slots.push(dateStr + "T14:30");
+  for (var mh = 8; mh < 11; mh++) {
+    slots.push(dateStr + "T" + zp(mh) + ":00");
+    slots.push(dateStr + "T" + zp(mh) + ":30");
+  }
+  return slots; // 14 + 2 + 6 = 22 slots
+}
+
+function zp(n) { return n < 10 ? "0" + n : String(n); }
 
 // =============================================================================
 // DIAGNOSTICS

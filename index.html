@@ -106,10 +106,16 @@ var ARGMAP={
   sendAnnouncement:["subject","body","category"],
   updateSubstitutes:["teamId","sub1","sub2"],
   assignMatchPlayers:["matchId","t1players","t2players"],
-  registerTeam:["data"]
+  registerTeam:["data"],
+  createManualBracket:["category","pairings"],
+  updateTeamSkill:["teamId","level"],
+  updateMatchSchedule:["matchId","scheduledTime","notify"],
+  autoAssignSchedules:["category","roundDates"]
 };
 
-var A={teams:[],matches:[],emails:[],tab:"dashboard",bcat:"Mens Doubles",sm:null,formUrl:""};
+var A={teams:[],matches:[],emails:[],tab:"dashboard",bcat:"Mens Doubles",bmode:"view",bpairings:null,sm:null,formUrl:""};
+var SKILL_COLORS={"Beginner":"#38bdf8","Intermediate":"#f59e0b","Advanced":"#ef4444"};
+var SKILL_ORDER=["Advanced","Intermediate","Beginner"];
 var RD=[
   {id:1,label:"Round 1 - Elimination",short:"R1",date:"Saturday, June 6, 2026",  col:"#38bdf8"},
   {id:2,label:"Round 2 - Winners",    short:"R2",date:"Saturday, June 13, 2026", col:"#f59e0b"},
@@ -224,7 +230,7 @@ function dDash(){
     h+='<div class="card"><div class="ct">'+LBL[cat]+'</div>'+
        '<div class="mu" style="margin-bottom:8px">'+ct.length+'/12 teams</div>'+
        '<div class="prog"><div class="pb" style="width:'+(ct.length/12*100)+'%"></div></div>';
-    h+=ct.length>=2?'<button class="btn" style="margin-top:8px" onclick="goBracket(\''+cat+'\')">'+( cm.length?'Regenerate':'Generate')+'  Bracket</button>':'<div class="mu" style="margin-top:8px">Need at least 2 teams.</div>';
+    h+=ct.length>=2?'<button class="btn" style="margin-top:8px" onclick="go(\'bracket\')">'+(cm.length?'Manage':'Build')+'  Bracket &#8594;</button>':'<div class="mu" style="margin-top:8px">Need at least 2 teams.</div>';
     h+='</div>';
   });
   h+='</div>';
@@ -283,18 +289,28 @@ function dTeams(){
        '<div class="ct">'+LBL[cat]+'</div>'+pill(ct.length+"/12",ct.length>=12?"#ef4444":"#afe409")+'</div>';
     if(!ct.length)h+='<div class="mu">No teams yet.</div>';
     ct.forEach(function(tm,i){
+      var sc=SKILL_COLORS[tm.SkillLevel]||"#5a6e5a";
       h+='<div class="tc"><div class="row" style="justify-content:space-between;margin-bottom:4px">'+
          '<div class="row" style="gap:8px">'+
          '<span style="font-size:10px;color:#5a6e5a;font-weight:700">#'+(i+1)+'</span>'+
-         '<span style="font-weight:700;font-size:13px">'+tm.TeamName+'</span></div>'+
+         '<span style="font-weight:700;font-size:13px">'+tm.TeamName+'</span>'+
+         (tm.SkillLevel?pill(tm.SkillLevel,sc):'')+'</div>'+
          '<div class="row">'+pill(tm.Wins+"W","#afe409")+pill(tm.Losses+"L",parseInt(tm.Losses)>0?"#ef4444":"#5a6e5a")+'</div></div>'+
          '<div class="mu">'+tm.P1Name+' ('+tm.P1Membership+') &amp; '+tm.P2Name+'</div>'+
          '<div style="font-size:10px;color:#5a6e5a88;margin-top:3px">'+tm.P1Email+' &middot; '+tm.P2Email+'</div>'+
          '<div class="mu" style="margin-top:4px">Subs: '+
            '<span style="color:'+(tm.Sub1Name?"#afe409":"#5a6e5a")+'">'+(tm.Sub1Name||"—")+'</span> &middot; '+
            '<span style="color:'+(tm.Sub2Name?"#afe409":"#5a6e5a")+'">'+(tm.Sub2Name||"—")+'</span></div>'+
-         '<div class="row" style="margin-top:6px;justify-content:space-between">'+
-           pill(tm.Status==="confirmed"?"Confirmed":"Waitlisted",tm.Status==="confirmed"?"#afe409":"#f59e0b")+
+         '<div class="row" style="margin-top:8px;justify-content:space-between;flex-wrap:wrap;gap:6px">'+
+           '<div class="row" style="gap:6px">'+
+             pill(tm.Status==="confirmed"?"Confirmed":"Waitlisted",tm.Status==="confirmed"?"#afe409":"#f59e0b")+
+             '<select style="width:auto;padding:4px 8px;font-size:10px;color:'+sc+';border-color:'+sc+'44" onchange="setSkill(\''+tm.ID+'\',this.value)">'+
+               '<option value=""'+(tm.SkillLevel?'':' selected')+'>Skill Level</option>'+
+               '<option value="Beginner"'+(tm.SkillLevel==="Beginner"?' selected':'')+'>Beginner</option>'+
+               '<option value="Intermediate"'+(tm.SkillLevel==="Intermediate"?' selected':'')+'>Intermediate</option>'+
+               '<option value="Advanced"'+(tm.SkillLevel==="Advanced"?' selected':'')+'>Advanced</option>'+
+             '</select>'+
+           '</div>'+
            '<button class="bto" style="font-size:9px;padding:5px 11px" onclick="openSubs(\''+tm.ID+'\')">&#9874; Edit Subs</button>'+
          '</div>'+
          '</div>';
@@ -306,32 +322,69 @@ function dTeams(){
 
 // ── Bracket ────────────────────────────────────────────────────────────────────
 function dBracket(){
-  var h='<div class="row" style="margin-bottom:16px">';
+  var h='<div class="row" style="margin-bottom:16px;flex-wrap:wrap;gap:8px">';
   CATS.forEach(function(cat){
-    h+='<button class="'+(A.bcat===cat?"btn":"bto")+'" onclick="A.bcat=\''+cat+'\';dBracket()">'+LBL[cat]+'</button>';
+    h+='<button class="'+(A.bcat===cat?"btn":"bto")+'" onclick="A.bcat=\''+cat+'\';A.bmode=\'view\';A.bpairings=null;dBracket()">'+LBL[cat]+'</button>';
   });
-  var has=A.matches.filter(function(m){return m.Category===A.bcat;}).length;
-  if(A.teams.filter(function(t){return t.Category===A.bcat;}).length>=2){
-    h+='<button class="bto" style="border-color:#f59e0b;color:#f59e0b;margin-left:auto" onclick="goBracket(\''+A.bcat+'\')">'+(has?"Regenerate":"Generate")+'  Bracket</button>';
-  }
   h+='</div>';
-  var cm=A.matches.filter(function(m){return m.Category===A.bcat;});
-  if(!cm.length){
-    h+='<div class="card" style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:8px">&#127942;</div><div class="mu">No bracket yet. Register at least 2 teams then click Generate.</div></div>';
+
+  if(A.bmode==="build"){
+    h+=buildBracketBuilder();
     $("pg-bracket").innerHTML=h;return;
   }
-  RD.forEach(function(r){
-    var rm=cm.filter(function(m){return parseInt(m.Round)===r.id;});if(!rm.length)return;
-    var rd=rm.filter(function(m){return m.WinnerID;}).length;
-    var rt=rm.filter(function(m){return m.Team1ID&&m.Team2ID;}).length;
-    h+='<div class="rh"><div class="rs" style="background:'+r.col+'"></div>'+
-       '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+r.col+'">'+r.label+'</div>'+
-       '<div style="font-size:10px;color:#5a6e5a">'+r.date+' &middot; Best of 3</div></div>'+
-       pill(rd+"/"+rt+" done",r.col)+'</div><div class="bg">';
+
+  // ── VIEW mode ──────────────────────────────────────────────────────────────
+  var cm=A.matches.filter(function(m){return m.Category===A.bcat;});
+  var catTeams=A.teams.filter(function(t){return t.Category===A.bcat&&t.Status==="confirmed";});
+
+  // Action bar
+  h+='<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">';
+  if(catTeams.length>=2){
+    h+='<button class="btn" onclick="enterBuildMode()">'+(cm.length?'&#9998; Edit Bracket':'&#43; Build Bracket')+'</button>';
+  }
+  h+='</div>';
+
+  if(!cm.length){
+    h+='<div class="card" style="text-align:center;padding:40px">'+
+       '<div style="font-size:32px;margin-bottom:8px">&#127942;</div>'+
+       '<div class="mu">No bracket yet. Click <strong style="color:#afe409">Build Bracket</strong> to create matchups manually.</div>'+
+       '</div>';
+    $("pg-bracket").innerHTML=h;return;
+  }
+
+  // ── Bracket tree (3 columns) ───────────────────────────────────────────────
+  h+='<div style="overflow-x:auto;margin-bottom:20px">';
+  h+='<div style="display:flex;gap:0;align-items:flex-start;min-width:640px">';
+
+  RD.forEach(function(r,ri){
+    var rm=cm.filter(function(m){return parseInt(m.Round)===r.id;});
+    var done=rm.filter(function(m){return m.WinnerID;}).length;
+    var playable=rm.filter(function(m){return m.Team1ID&&m.Team2ID;}).length;
+
+    // Connector arrow between rounds
+    if(ri>0){
+      h+='<div style="display:flex;align-items:center;padding:0 8px;align-self:center;flex-shrink:0">'+
+         '<div style="font-size:18px;color:#1a271a">&#8594;</div></div>';
+    }
+
+    h+='<div style="flex:1;min-width:200px">';
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+       '<div style="width:3px;height:20px;background:'+r.col+';border-radius:2px;flex-shrink:0"></div>'+
+       '<div><div style="font-size:11px;font-weight:700;color:'+r.col+'">'+r.label+'</div>'+
+       '<div style="font-size:9px;color:#5a6e5a">'+r.date+(playable?' &middot; '+done+'/'+playable+' done':'')+'</div></div>'+
+       '</div>';
+
+    if(!rm.length){
+      h+='<div style="background:#080d08;border:1px solid #1a271a;border-radius:6px;padding:14px;text-align:center">'+
+         '<div style="font-size:10px;color:#5a6e5a">TBD</div></div>';
+    }
+
     rm.forEach(function(m){
       var t1=gt(m.Team1ID),t2=m.Team2ID?gt(m.Team2ID):null;
       var bye=m.Team1ID&&!m.Team2ID,done=!!m.WinnerID,ready=m.Team1ID&&(m.Team2ID||bye)&&!done;
-      var st=done?'<span style="color:#afe409">DONE</span>':ready?'<span style="color:'+r.col+'">READY</span>':bye?'<span style="color:#4d7c0f">ADV</span>':'';
+      var st=done?'<span style="color:#afe409;font-size:9px">DONE</span>':
+              ready?'<span style="color:'+r.col+';font-size:9px">READY</span>':
+              bye?'<span style="color:#4d7c0f;font-size:9px">ADV</span>':'';
       var c1=m.WinnerID===m.Team1ID?"#afe409":t1?"#eef4e8":"#5a6e5a";
       var c2=m.WinnerID===m.Team2ID?"#afe409":t2?"#eef4e8":"#5a6e5a";
       var b1=m.WinnerID===m.Team1ID?"background:#4d7c0f33;":"";
@@ -343,30 +396,206 @@ function dBracket(){
         if(m.G2T1!==""&&m.G2T2!=="")gs.push("G2:"+m.G2T1+"-"+m.G2T2);
         if(m.G3T1!==""&&m.G3T2!=="")gs.push("G3:"+m.G3T1+"-"+m.G3T2);
       }
-      h+='<div class="mc" style="border:1px solid '+bc+'">'+
+      var sk1=t1&&t1.SkillLevel?'<span style="font-size:8px;color:'+SKILL_COLORS[t1.SkillLevel]+';margin-left:4px">['+t1.SkillLevel+']</span>':'';
+      var sk2=t2&&t2.SkillLevel?'<span style="font-size:8px;color:'+SKILL_COLORS[t2.SkillLevel]+';margin-left:4px">['+t2.SkillLevel+']</span>':'';
+      h+='<div class="mc" style="border:1px solid '+bc+';margin-bottom:8px">'+
          '<div class="mh" style="color:'+r.col+'"><span>'+r.short+' #'+(parseInt(m.Slot)+1)+'</span>'+st+'</div>'+
-         '<div class="mr" style="'+b1+'"><span style="font-size:12px;font-weight:700;color:'+c1+'">'+(t1?t1.TeamName+(m.WinnerID===m.Team1ID?" &#127942;":""):"TBD")+'</span>'+
-         '<span class="ms" style="color:'+c1+'">'+(done?m.Score1:"&ndash;")+'</span></div>'+
+         '<div class="mr" style="'+b1+'">'+
+           '<span style="font-size:12px;font-weight:700;color:'+c1+'">'+(t1?t1.TeamName+(m.WinnerID===m.Team1ID?" &#127942;":""):"TBD")+sk1+'</span>'+
+           '<span class="ms" style="color:'+c1+'">'+(done?m.Score1:"&ndash;")+'</span>'+
+         '</div>'+
          '<div class="mr" style="'+b2+'">';
-      if(bye){h+='<span style="font-size:11px;color:#4d7c0f;font-style:italic">Advanced</span><span class="ms"></span>';}
-      else{h+='<span style="font-size:12px;font-weight:700;color:'+c2+'">'+(t2?t2.TeamName+(m.WinnerID===m.Team2ID?" &#127942;":""):"TBD")+'</span>'+
+      if(bye){h+='<span style="font-size:11px;color:#4d7c0f;font-style:italic">Auto-advanced</span><span class="ms"></span>';}
+      else{h+='<span style="font-size:12px;font-weight:700;color:'+c2+'">'+(t2?t2.TeamName+(m.WinnerID===m.Team2ID?" &#127942;":""):"TBD")+sk2+'</span>'+
               '<span class="ms" style="color:'+c2+'">'+(done?m.Score2:"&ndash;")+'</span>';}
       h+='</div>';
+      // Players row
       var p1txt=m.T1Players||(t1?(t1.P1Name+" & "+t1.P2Name):"");
       var p2txt=bye?"":(m.T2Players||(t2?(t2.P1Name+" & "+t2.P2Name):""));
       if(p1txt||p2txt){
-        h+='<div style="padding:5px 10px;background:#080d08;border-top:1px solid #1a271a">'+
+        h+='<div style="padding:4px 10px;background:#080d08;border-top:1px solid #1a271a">'+
            '<div style="font-size:9px;color:'+(m.T1Players?"#afe409":"#5a6e5a")+'">&#9654; '+(p1txt||"&ndash;")+'</div>';
         if(p2txt)h+='<div style="font-size:9px;color:'+(m.T2Players?"#afe409":"#5a6e5a")+'">&#9654; '+p2txt+'</div>';
         h+='</div>';
       }
-      if(gs.length)h+='<div style="padding:4px 10px;background:#080d08"><div class="gscore">'+gs.join(" &middot; ")+'</div></div>';
-      if(ready)h+='<div class="mf row" style="gap:6px"><button class="bbl" onclick="openScore(\''+m.ID+'\')">Enter Scores</button><button class="bbl" style="background:#38bdf8" onclick="openAssign(\''+m.ID+'\')">Set Players</button></div>';
+      // Scores row
+      if(gs.length)h+='<div style="padding:3px 10px;background:#080d08"><div class="gscore">'+gs.join(" &middot; ")+'</div></div>';
+      // Scheduled time
+      if(m.ScheduledTime){
+        h+='<div style="padding:4px 10px;background:#080d08;border-top:1px solid #1a271a">'+
+           '<span style="font-size:9px;color:#f59e0b">&#128337; '+fmtDT(m.ScheduledTime)+'</span></div>';
+      }
+      // Action buttons
+      if(ready)h+='<div class="mf row" style="gap:6px"><button class="bbl" onclick="openScore(\''+m.ID+'\')">Enter Scores</button>'+
+                  '<button class="bbl" style="background:#38bdf8" onclick="openAssign(\''+m.ID+'\')">Set Players</button></div>';
       h+='</div>';
     });
-    h+='</div>';
+    h+='</div>'; // round column
   });
+  h+='</div></div>'; // flex row + scroll wrapper
+
+  // ── Schedule Panel ─────────────────────────────────────────────────────────
+  h+=buildSchedulePanel(cm);
+
   $("pg-bracket").innerHTML=h;
+}
+
+// ── Bracket Builder (build mode) ───────────────────────────────────────────────
+function buildBracketBuilder(){
+  var cat=A.bcat;
+  var teams=A.teams.filter(function(t){return t.Category===cat&&t.Status==="confirmed";});
+  if(!teams.length) return '<div class="card"><div class="mu">No confirmed teams in '+LBL[cat]+'.</div></div>';
+
+  var nSlots=Math.ceil(teams.length/2);
+  if(!A.bpairings||A.bpairings.length!==nSlots){
+    // Keep any existing selections if slot count matches
+    A.bpairings=[];
+    for(var i=0;i<nSlots;i++) A.bpairings.push({t1:"",t2:""});
+  }
+
+  // Build used-ID map
+  var used={};
+  A.bpairings.forEach(function(p){if(p.t1)used[p.t1]=true;if(p.t2)used[p.t2]=true;});
+
+  // Left: slot cards
+  var h='<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">';
+  h+='<div style="flex:1;min-width:260px">';
+  h+='<div class="card">';
+  h+='<div class="ct">Round 1 Matchups — '+LBL[cat]+'</div>';
+  h+='<div style="font-size:10px;color:#5a6e5a;margin-bottom:14px;line-height:1.6">'+
+     'Assign teams to each slot. Leave <em>Team 2</em> blank to give a team a bye (auto-advance). '+
+     'Each team can only appear once.</div>';
+
+  for(var s=0;s<nSlots;s++){
+    var p=A.bpairings[s];
+    var avail1=teams.filter(function(t){return !used[t.ID]||t.ID===p.t1;});
+    var avail2=teams.filter(function(t){return !used[t.ID]||t.ID===p.t2;});
+    var sc1=p.t1&&gt(p.t1)?SKILL_COLORS[gt(p.t1).SkillLevel]||"#5a6e5a":"#5a6e5a";
+    var sc2=p.t2&&gt(p.t2)?SKILL_COLORS[gt(p.t2).SkillLevel]||"#5a6e5a":"#5a6e5a";
+    h+='<div style="background:#080d08;border:1px solid #1a271a;border-radius:6px;padding:12px;margin-bottom:10px">';
+    h+='<div style="font-size:9px;color:#38bdf8;font-weight:700;letter-spacing:2px;margin-bottom:10px">SLOT '+(s+1)+'</div>';
+    // Team 1
+    h+='<label style="color:'+sc1+'">Team 1</label>'+
+       '<select style="border-color:'+sc1+'55" onchange="onPairChange('+s+',\'t1\',this.value)">'+
+       '<option value="">-- Select Team --</option>';
+    avail1.forEach(function(t){
+      var skl=t.SkillLevel?' ['+t.SkillLevel+']':'';
+      h+='<option value="'+t.ID+'"'+(t.ID===p.t1?' selected':'')+'>'+t.TeamName+skl+'</option>';
+    });
+    h+='</select>';
+    // Team 2
+    h+='<label style="margin-top:8px;color:'+sc2+'">Team 2 <span style="font-size:9px;color:#5a6e5a;font-weight:400">(blank = BYE)</span></label>'+
+       '<select style="border-color:'+sc2+'55" onchange="onPairChange('+s+',\'t2\',this.value)">'+
+       '<option value="">-- BYE / Auto-advance --</option>';
+    avail2.forEach(function(t){
+      var skl=t.SkillLevel?' ['+t.SkillLevel+']':'';
+      h+='<option value="'+t.ID+'"'+(t.ID===p.t2?' selected':'')+'>'+t.TeamName+skl+'</option>';
+    });
+    h+='</select>';
+    if(p.t1&&!p.t2)h+='<div style="font-size:10px;color:#4d7c0f;margin-top:6px">&#10003; '+(gt(p.t1)?gt(p.t1).TeamName:p.t1)+' will auto-advance</div>';
+    h+='</div>';
+  }
+
+  h+='<div class="row" style="margin-top:14px;gap:8px">'+
+     '<button class="btn" onclick="saveBracket()">&#10003; Save Bracket</button>'+
+     '<button class="bto" style="border-color:#5a6e5a;color:#5a6e5a" onclick="A.bmode=\'view\';A.bpairings=null;dBracket()">Cancel</button>'+
+     '</div><div class="err" id="berr" style="margin-top:8px"></div>';
+  h+='</div></div>'; // card + left col
+
+  // Right: team pool
+  h+='<div style="min-width:240px">';
+  h+='<div class="card">';
+  h+='<div class="ct">Team Pool</div>';
+  var unrated=[];
+  SKILL_ORDER.forEach(function(lvl){
+    var ltms=teams.filter(function(t){return t.SkillLevel===lvl;});
+    if(!ltms.length)return;
+    var sc=SKILL_COLORS[lvl];
+    h+='<div style="font-size:9px;font-weight:700;color:'+sc+';letter-spacing:1px;margin:10px 0 6px">'+lvl.toUpperCase()+'</div>';
+    ltms.forEach(function(t){h+=_tpc(t,used);});
+  });
+  unrated=teams.filter(function(t){return !t.SkillLevel;});
+  if(unrated.length){
+    h+='<div style="font-size:9px;font-weight:700;color:#5a6e5a;letter-spacing:1px;margin:10px 0 6px">UNRATED</div>';
+    unrated.forEach(function(t){h+=_tpc(t,used);});
+  }
+  if(!teams.filter(function(t){return t.SkillLevel;}).length&&!unrated.length){
+    h+='<div class="mu">No confirmed teams yet.</div>';
+  }
+  h+='<div style="font-size:9px;color:#5a6e5a;margin-top:12px;line-height:1.6">Tip: Set skill levels in the Teams tab so similar levels appear grouped here.</div>';
+  h+='</div></div>'; // card + right col
+
+  h+='</div>'; // flex wrapper
+  return h;
+}
+
+function _tpc(t,used){
+  var isUsed=!!used[t.ID];
+  var sc=SKILL_COLORS[t.SkillLevel]||"#5a6e5a";
+  return '<div style="padding:7px 10px;border-radius:5px;margin-bottom:5px;border:1px solid '+(isUsed?'#1a271a44':'#1a271a')+';background:#080d08;opacity:'+(isUsed?'0.45':'1')+'">' +
+         '<div style="display:flex;align-items:center;gap:6px">' +
+         (isUsed?'<span style="color:#4d7c0f;font-size:10px">&#10003;</span>':'')+
+         '<span style="font-size:12px;font-weight:700;color:'+(isUsed?'#5a6e5a':'#eef4e8')+'">'+t.TeamName+'</span>'+
+         (t.SkillLevel?'<span style="font-size:8px;color:'+sc+'">['+t.SkillLevel+']</span>':'')+
+         '</div>'+
+         '<div style="font-size:10px;color:#5a6e5a88;margin-top:1px">'+t.P1Name+' &amp; '+t.P2Name+'</div>'+
+         '</div>';
+}
+
+// ── Schedule Panel ─────────────────────────────────────────────────────────────
+function buildSchedulePanel(cm){
+  var playable=cm.filter(function(m){return m.Team1ID&&m.Team2ID;});
+  if(!playable.length)return'';
+
+  var h='<div class="card" style="margin-top:6px">';
+  h+='<div class="ct">Match Schedule</div>';
+
+  // Auto-assign section
+  h+='<div style="background:#080d08;border:1px solid #1a271a;border-radius:6px;padding:14px;margin-bottom:16px">';
+  h+='<div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:10px">&#128197; Auto-Assign Time Slots</div>';
+  h+='<div style="font-size:10px;color:#5a6e5a;margin-bottom:12px;line-height:1.6">Fills 3 PM – 10 PM first, then morning (8–11 AM), avoiding peak heat (11 AM – 2 PM). 30 min per match.</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">';
+  RD.forEach(function(r){
+    var def=r.date.match(/\d{4}/)?r.date:'';
+    // extract YYYY-MM-DD from the label date
+    var mo={"January":"01","February":"02","March":"03","April":"04","May":"05","June":"06",
+            "July":"07","August":"08","September":"09","October":"10","November":"11","December":"12"};
+    var dm=r.date.match(/(\w+)\s(\d+),\s(\d{4})/);
+    var iso=dm?(dm[3]+"-"+mo[dm[1]]+"-"+(dm[2].length<2?"0":"")+dm[2]):"";
+    h+='<div><label style="color:'+r.col+'">'+r.short+' Date</label>'+
+       '<input type="date" id="rd-'+r.id+'" value="'+iso+'" style="border-color:'+r.col+'44;color:'+r.col+'"></div>';
+  });
+  h+='</div>';
+  h+='<button class="btn" style="background:#f59e0b;color:#000" onclick="autoSchedule()">Auto-Assign All Schedules</button>';
+  h+='</div>';
+
+  // Individual match schedule
+  h+='<div style="font-size:10px;font-weight:700;color:#5a6e5a;letter-spacing:1px;margin-bottom:10px">INDIVIDUAL MATCH TIMES</div>';
+  RD.forEach(function(r){
+    var rm=playable.filter(function(m){return parseInt(m.Round)===r.id;});
+    if(!rm.length)return;
+    h+='<div style="font-size:10px;color:'+r.col+';font-weight:700;margin:10px 0 6px;letter-spacing:1px">'+r.label.toUpperCase()+'</div>';
+    rm.forEach(function(m){
+      var t1=gt(m.Team1ID),t2=gt(m.Team2ID);
+      var t1n=t1?t1.TeamName:"TBD",t2n=t2?t2.TeamName:"TBD";
+      h+='<div style="background:#080d08;border:1px solid #1a271a;border-radius:5px;padding:10px 12px;margin-bottom:8px">';
+      h+='<div style="font-size:12px;font-weight:700;margin-bottom:8px">'+
+         '<span style="color:'+r.col+';font-size:9px;margin-right:6px">'+r.short+' #'+(parseInt(m.Slot)+1)+'</span>'+
+         t1n+' <span style="color:#5a6e5a;font-weight:400">vs</span> '+t2n+'</div>';
+      h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">';
+      h+='<div style="flex:1;min-width:180px"><label>Date &amp; Time</label>'+
+         '<input type="datetime-local" id="sched-'+m.ID+'" value="'+(m.ScheduledTime||'')+'" style="border-color:'+r.col+'33"></div>';
+      h+='<div class="row" style="gap:6px;padding-bottom:1px">'+
+         '<button class="bto" style="border-color:#afe409;color:#afe409;font-size:10px;padding:7px 12px" onclick="saveMatchTime(\''+m.ID+'\',false)">Save</button>'+
+         '<button class="btn" style="font-size:10px;padding:7px 12px" onclick="saveMatchTime(\''+m.ID+'\',true)">Save &amp; Notify</button>'+
+         '</div>';
+      h+='</div>';
+      if(m.ScheduledTime)h+='<div style="font-size:10px;color:#f59e0b;margin-top:6px">&#128337; Currently: '+fmtDT(m.ScheduledTime)+'</div>';
+      h+='</div>';
+    });
+  });
+  h+='</div>';
+  return h;
 }
 
 // ── Scores ─────────────────────────────────────────────────────────────────────
@@ -374,11 +603,12 @@ function dScores(){
   var pend=A.matches.filter(function(m){return m.Team1ID&&m.Team2ID&&!m.WinnerID;});
   var done=A.matches.filter(function(m){return m.WinnerID;});
   var h='<div class="card"><div class="ct">Pending Matches ('+(pend.length)+')</div>';
-  if(!pend.length)h+='<div class="mu">No pending matches. Generate a bracket first.</div>';
+  if(!pend.length)h+='<div class="mu">No pending matches. Build a bracket in the Bracket tab first.</div>';
   pend.forEach(function(m){
     var t1=gt(m.Team1ID),t2=gt(m.Team2ID),r=gr(parseInt(m.Round));
+    var schedTxt=m.ScheduledTime?'<span style="color:#f59e0b;margin-left:8px">&#128337; '+fmtDT(m.ScheduledTime)+'</span>':'';
     h+='<div style="background:#080d08;border:1px solid #1a271a;border-radius:5px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;flex-wrap:wrap;gap:8px" onclick="openScore(\''+m.ID+'\')">'+
-       '<div><div style="font-size:10px;color:'+r.col+';font-weight:700;margin-bottom:3px">'+r.label+' &middot; '+r.date+'</div>'+
+       '<div><div style="font-size:10px;color:'+r.col+';font-weight:700;margin-bottom:3px">'+r.label+' &middot; '+r.date+schedTxt+'</div>'+
        '<div style="font-size:13px;font-weight:700">'+(t1?t1.TeamName:"TBD")+' <span style="color:#5a6e5a;font-weight:400">vs</span> '+(t2?t2.TeamName:"TBD")+'</div>'+
        '<div style="font-size:10px;color:#5a6e5a">'+LBL[m.Category]+' &middot; Best of 3</div></div>'+
        '<button class="bbl">Enter Scores</button></div>';
@@ -523,13 +753,96 @@ function dEmails(){
   $("pg-emails").innerHTML=h;
 }
 
-// ── Bracket generate ───────────────────────────────────────────────────────────
-function goBracket(cat){
-  toast("Generating bracket...","#38bdf8");
-  call("generateBracket",[cat],function(r){
-    if(r&&r.ok){toast(r.msg);load(function(){draw(A.tab);});}
+// ── Bracket builder helpers ────────────────────────────────────────────────────
+function enterBuildMode(){
+  var cat=A.bcat;
+  var r1=A.matches.filter(function(m){return m.Category===cat&&parseInt(m.Round)===1;})
+                  .sort(function(a,b){return parseInt(a.Slot)-parseInt(b.Slot);});
+  var teams=A.teams.filter(function(t){return t.Category===cat&&t.Status==="confirmed";});
+  var nSlots=Math.max(r1.length,Math.ceil(teams.length/2));
+  if(r1.length){
+    A.bpairings=r1.map(function(m){return{t1:m.Team1ID,t2:m.Team2ID};});
+    // Pad if fewer slots than needed
+    while(A.bpairings.length<nSlots)A.bpairings.push({t1:"",t2:""});
+  }else{
+    A.bpairings=[];
+    for(var i=0;i<nSlots;i++)A.bpairings.push({t1:"",t2:""});
+  }
+  A.bmode="build";
+  dBracket();
+}
+
+function onPairChange(slot,pos,val){
+  if(!A.bpairings)return;
+  A.bpairings[slot][pos]=val;
+  dBracket();
+}
+
+function saveBracket(){
+  if(!A.bpairings||!A.bpairings.length){tx("berr","No slots defined.");return;}
+  var bad=A.bpairings.some(function(p){return !p.t1;});
+  if(bad){tx("berr","Every slot needs at least a Team 1 (leave Team 2 blank for a BYE).");return;}
+  tx("berr","Saving...");
+  call("createManualBracket",[A.bcat,A.bpairings],function(r){
+    if(r&&r.ok){
+      A.bmode="view";A.bpairings=null;
+      toast(r.msg);
+      load(function(){dBracket();});
+    }else{tx("berr",r?r.msg:"Error saving bracket.");}
+  });
+}
+
+function setSkill(teamId,level){
+  call("updateTeamSkill",[teamId,level],function(r){
+    if(r&&r.ok){
+      A.teams.forEach(function(t){if(t.ID===teamId)t.SkillLevel=level;});
+      toast("Skill level updated");
+    }else{toast("Error: "+(r?r.msg:"failed"),"#ef4444");}
+  });
+}
+
+function saveMatchTime(matchId,notify){
+  var val=v("sched-"+matchId);
+  if(!val){toast("Pick a date and time first","#ef4444");return;}
+  call("updateMatchSchedule",[matchId,val,notify?"true":"false"],function(r){
+    if(r&&r.ok){
+      A.matches.forEach(function(m){if(m.ID===matchId)m.ScheduledTime=val;});
+      toast(r.msg);
+      dBracket();
+    }else{toast(r?r.msg:"Error","#ef4444");}
+  });
+}
+
+function autoSchedule(){
+  var mo={"January":"01","February":"02","March":"03","April":"04","May":"05","June":"06",
+          "July":"07","August":"08","September":"09","October":"10","November":"11","December":"12"};
+  var roundDates={};
+  RD.forEach(function(r){
+    var el=$("rd-"+r.id);
+    if(el&&el.value){roundDates[String(r.id)]=el.value;}
+    else{
+      var dm=r.date.match(/(\w+)\s(\d+),\s(\d{4})/);
+      if(dm)roundDates[String(r.id)]=dm[3]+"-"+mo[dm[1]]+"-"+(dm[2].length<2?"0":"")+dm[2];
+    }
+  });
+  toast("Auto-assigning schedules...","#38bdf8");
+  call("autoAssignSchedules",[A.bcat,roundDates],function(r){
+    if(r&&r.ok){toast(r.msg);load(function(){dBracket();});}
     else{toast(r?r.msg:"Error","#ef4444");}
   });
+}
+
+function fmtDT(dt){
+  if(!dt)return"";
+  try{
+    var d=new Date(String(dt).replace(" ","T"));
+    if(isNaN(d.getTime()))return dt;
+    var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    var h=d.getHours(),m=d.getMinutes();
+    var ampm=h>=12?"PM":"AM",h12=h%12||12;
+    return days[d.getDay()]+" "+(d.getMonth()+1)+"/"+d.getDate()+"/"+d.getFullYear()+
+           " "+h12+":"+(m<10?"0"+m:m)+" "+ampm;
+  }catch(e){return dt;}
 }
 
 // ── Substitutes Modal ──────────────────────────────────────────────────────────
