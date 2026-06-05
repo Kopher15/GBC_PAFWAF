@@ -223,24 +223,22 @@ html,body{
 .champ-tag{font-size:clamp(9px,1vw,11px);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--lime2);font-family:'Barlow Condensed',sans-serif;}
 .champ-nm{font-size:clamp(16px,2.5vw,22px);font-weight:900;color:var(--blue2);letter-spacing:-.5px;font-family:'Barlow Condensed',sans-serif;font-style:italic;text-transform:uppercase;}
 
-/* ══ ROUND TABS ══ */
-.round-tabs{display:flex;gap:clamp(6px,1vw,10px);margin-bottom:clamp(12px,1.8vw,18px);overflow-x:auto;scrollbar-width:none;}
-.round-tabs::-webkit-scrollbar{display:none;}
-.rtab{flex:1;min-width:90px;text-align:center;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rs);padding:clamp(8px,1.2vw,12px) 6px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
-.rtab.on{background:var(--blue);border-color:var(--blue);}
-.rtab-lbl{font-size:clamp(11px,1.4vw,13px);font-weight:800;color:var(--text3);line-height:1.2;}
-.rtab.on .rtab-lbl{color:#fff;}
-.rtab-dt{font-size:clamp(9px,1vw,11px);color:var(--text3);margin-top:2px;font-weight:600;}
-.rtab.on .rtab-dt{color:rgba(255,255,255,.55);}
-
-/* ══ MATCHES GRID ══ */
-.matches-grid{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:clamp(8px,1.2vw,12px);
-}
-@media(min-width:640px){.matches-grid{grid-template-columns:repeat(2,1fr);}}
-@media(min-width:1024px){.matches-grid{grid-template-columns:repeat(3,1fr);}}
+/* ══ BRACKET TREE ══ */
+.bracket-wrap{overflow-x:auto;overflow-y:hidden;padding-bottom:8px;-webkit-overflow-scrolling:touch;}
+.bracket-wrap::-webkit-scrollbar{height:8px;}
+.bracket-tree{position:relative;min-width:-moz-fit-content;min-width:fit-content;}
+.bt-svg{position:absolute;top:0;left:0;pointer-events:none;z-index:0;overflow:visible;}
+.bt-svg path{fill:none;stroke:var(--blue-md);stroke-width:2;}
+.bt-cols{display:flex;align-items:stretch;gap:clamp(34px,5vw,64px);position:relative;z-index:1;}
+.bt-col{display:flex;flex-direction:column;flex:0 0 clamp(232px,24vw,288px);min-width:0;}
+.bt-rhead{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rs);padding:clamp(7px,1vw,11px) 10px;text-align:center;margin-bottom:clamp(10px,1.6vw,16px);box-shadow:var(--shadow);}
+.bt-rhead .rh-lbl{font-size:clamp(11px,1.4vw,14px);font-weight:800;color:var(--blue);line-height:1.2;}
+.bt-rhead .rh-dt{font-size:clamp(9px,1vw,11px);color:var(--text3);font-weight:600;margin-top:2px;}
+.bt-rhead.champ{border-color:var(--lime);background:var(--lime-lt);}
+.bt-rhead.champ .rh-lbl{color:var(--lime2);}
+.bt-body{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:clamp(10px,1.5vw,18px);}
+.bt-match{position:relative;}
+.bt-empty{align-self:center;margin:auto;color:var(--text3);font-size:clamp(10px,1.2vw,12px);font-weight:600;background:var(--surface);border:1.5px dashed var(--border);border-radius:var(--rs);padding:14px 18px;text-align:center;}
 
 /* ══ MATCH CARD ══ */
 .mcard{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s;}
@@ -250,6 +248,8 @@ html,body{
 .mc-head{background:var(--blue-lt);padding:clamp(6px,1vw,9px) clamp(12px,1.5vw,16px);display:flex;justify-content:space-between;align-items:center;}
 .mc-rnd{font-size:clamp(9px,1.1vw,11px);font-weight:800;color:var(--blue);letter-spacing:.06em;}
 .mc-badge{font-size:clamp(8px,.9vw,10px);font-weight:800;letter-spacing:.07em;padding:2px 8px;border-radius:99px;}
+.mc-time{display:flex;align-items:center;gap:5px;padding:clamp(4px,.8vw,7px) clamp(12px,1.5vw,16px);font-size:clamp(9px,1.1vw,11px);font-weight:700;color:var(--blue);background:var(--surface);border-bottom:1px solid var(--border);}
+.mc-time.tbd{color:var(--text3);opacity:.75;font-weight:600;}
 .b-done{background:var(--green-lt);color:var(--green);}
 .b-next{background:var(--blue-lt);color:var(--blue);}
 .b-wait{background:var(--border);color:var(--text3);}
@@ -363,11 +363,11 @@ html,body{
             <div style="font-size:clamp(10px,1.2vw,12px);font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:6px;">GBC Pickleball Tournament</div>
             <div class="hero-title-line white">PICK-A-FRIEND</div>
             <div class="hero-title-line lime">WIN-A-FRIEND</div>
-            <div class="hero-meta">📍 62-B Happy Valley, Cebu City · Best of 3 games<br>🗓 R1: June 6 &nbsp;·&nbsp; R2: June 13 &nbsp;·&nbsp; Championship: June 20</div>
+            <div class="hero-meta">📍 62-B Happy Valley, Cebu City · Best of 3 games<br>🗓 R1: June 6 &nbsp;·&nbsp; R2: June 13 &nbsp;·&nbsp; R3 &amp; Championship: June 20</div>
           </div>
           <div class="hero-stats">
             <div class="hstat"><div class="hstat-n" id="s-teams">24</div><div class="hstat-l">Teams</div></div>
-            <div class="hstat"><div class="hstat-n">3</div><div class="hstat-l">Rounds</div></div>
+            <div class="hstat"><div class="hstat-n">4</div><div class="hstat-l">Rounds</div></div>
             <div class="hstat"><div class="hstat-n">2</div><div class="hstat-l">Categories</div></div>
           </div>
         </div>
@@ -408,9 +408,10 @@ html,body{
       <!-- Schedule -->
       <div class="sec-hdr"><div class="sec-bar"></div><div class="sec-lbl">Tournament Schedule</div></div>
       <div class="sched-card">
-        <div class="sched-row"><div class="sched-icon" style="background:var(--blue-lt);">📅</div><div><div class="sched-title">Round 1 — Elimination</div><div class="sched-date">June 6, 2026</div></div><div class="sched-badge" style="background:var(--blue-lt);color:var(--blue);">R1</div></div>
-        <div class="sched-row"><div class="sched-icon" style="background:var(--lime-lt);">📅</div><div><div class="sched-title">Round 2 — Winners</div><div class="sched-date">June 13, 2026</div></div><div class="sched-badge" style="background:var(--lime-lt);color:var(--lime2);">R2</div></div>
-        <div class="sched-row"><div class="sched-icon" style="background:var(--green-lt);">🏆</div><div><div class="sched-title">Championship — Final</div><div class="sched-date">June 20, 2026</div></div><div class="sched-badge" style="background:var(--green-lt);color:var(--green);">FINAL</div></div>
+        <div class="sched-row"><div class="sched-icon" style="background:var(--blue-lt);">📅</div><div><div class="sched-title">Round 1</div><div class="sched-date">June 6, 2026</div></div><div class="sched-badge" style="background:var(--blue-lt);color:var(--blue);">R1</div></div>
+        <div class="sched-row"><div class="sched-icon" style="background:var(--blue-lt);">📅</div><div><div class="sched-title">Round 2</div><div class="sched-date">June 13, 2026</div></div><div class="sched-badge" style="background:var(--blue-lt);color:var(--blue);">R2</div></div>
+        <div class="sched-row"><div class="sched-icon" style="background:var(--lime-lt);">📅</div><div><div class="sched-title">Round 3</div><div class="sched-date">June 20, 2026</div></div><div class="sched-badge" style="background:var(--lime-lt);color:var(--lime2);">R3</div></div>
+        <div class="sched-row"><div class="sched-icon" style="background:var(--green-lt);">🏆</div><div><div class="sched-title">Championship</div><div class="sched-date">June 20, 2026 · right after Round 3</div></div><div class="sched-badge" style="background:var(--green-lt);color:var(--green);">FINAL</div></div>
       </div>
     </div>
   </div>
@@ -419,8 +420,7 @@ html,body{
   <div class="page" id="page-mens">
     <div class="pscroll">
       <div class="champ-banner" id="cb2-m"><div class="champ-trophy">🏆</div><div><div class="champ-tag">Men's Doubles Champion</div><div class="champ-nm" id="cb2-m-nm">—</div></div></div>
-      <div class="round-tabs" id="rt-mens"></div>
-      <div class="matches-grid" id="rc-mens"></div>
+      <div class="bracket-wrap"><div class="bracket-tree" id="bt-mens"></div></div>
     </div>
   </div>
 
@@ -428,8 +428,7 @@ html,body{
   <div class="page" id="page-womens">
     <div class="pscroll">
       <div class="champ-banner" id="cb2-w"><div class="champ-trophy">🏆</div><div><div class="champ-tag">Women's Doubles Champion</div><div class="champ-nm" id="cb2-w-nm">—</div></div></div>
-      <div class="round-tabs" id="rt-womens"></div>
-      <div class="matches-grid" id="rc-womens"></div>
+      <div class="bracket-wrap"><div class="bracket-tree" id="bt-womens"></div></div>
     </div>
   </div>
 
@@ -452,14 +451,51 @@ var API_URL="https://script.google.com/macros/s/AKfycbzFLIcUY0uqxzDiehnb8LV_kowX
 var D={teams:[],matches:[]};
 var PAGES=["home","mens","womens","teams"];
 var TIMER=30;
-var AR={mens:1,womens:1};
 var RD=[
-  {id:1,label:"Round 1",sub:"June 6, 2026"},
-  {id:2,label:"Round 2",sub:"June 13, 2026"},
-  {id:3,label:"Final",  sub:"June 20, 2026"}
+  {id:1,label:"Round 1",     sub:"June 6, 2026"},
+  {id:2,label:"Round 2",     sub:"June 13, 2026"},
+  {id:3,label:"Round 3",     sub:"June 20, 2026"},
+  {id:4,label:"Championship",sub:"June 20 · after Round 3"}
 ];
+var CHAMP_ROUND=4;
 
 function pad(n){return String(n).padStart(2,"0");}
+
+// Order matches by their scheduled time (earliest first). Unscheduled matches
+// fall to the end, ordered by Slot. Match numbers follow this same sequence —
+// kept identical to the manager so both views agree.
+// Parse a stored schedule value. The sheet stores a locale string like
+// "6/6/2026, 10:15:00 PM" (parsed fine as-is); the .replace fallback only helps
+// the "2026-06-06 10:15" form. Parsing as-is FIRST is essential — replacing the
+// space in the locale string corrupts it to NaN.
+function schedMs(dt){
+  if(!dt)return NaN;
+  var s=String(dt);
+  var t=new Date(s).getTime();
+  if(isNaN(t))t=new Date(s.replace(" ","T")).getTime();
+  return t;
+}
+function schedSort(a,b){
+  var ta=schedMs(a.ScheduledTime),tb=schedMs(b.ScheduledTime);
+  var va=isNaN(ta),vb=isNaN(tb);
+  if(!va&&!vb)return ta-tb;
+  if(!va&&vb)return -1;
+  if(va&&!vb)return 1;
+  return parseInt(a.Slot)-parseInt(b.Slot);
+}
+
+// Format a datetime-local value as a short "Jun 6, 10:15 AM" label.
+function fmtSched(dt){
+  if(!dt)return "";
+  var s=String(dt);
+  var d=new Date(s);
+  if(isNaN(d.getTime()))d=new Date(s.replace(" ","T"));
+  if(isNaN(d.getTime()))return s;
+  var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var h=d.getHours(),mn=d.getMinutes(),ap=h>=12?"PM":"AM";
+  var h12=h%12;if(h12===0)h12=12;
+  return mo[d.getMonth()]+" "+d.getDate()+", "+h12+":"+pad(mn)+" "+ap;
+}
 
 setInterval(function(){
   var n=new Date();
@@ -476,6 +512,8 @@ function sw(pg){
     var n=document.getElementById("nav-"+p);
     if(n)n.classList.toggle("on",p===pg);
   });
+  // The just-revealed bracket needs its connectors drawn against real layout.
+  if(pg==="mens"||pg==="womens")requestAnimationFrame(function(){drawConnectors(pg);});
 }
 
 function gt(id){return D.teams.find(function(t){return t.ID===id;})||null;}
@@ -503,7 +541,7 @@ function getStatus(tid){
   D.matches.forEach(function(m){
     if(!m.WinnerID)return;
     if(m.Team1ID!==tid&&m.Team2ID!==tid)return;
-    if(m.WinnerID===tid){if(parseInt(m.Round)===3)champ=true;}
+    if(m.WinnerID===tid){if(parseInt(m.Round)===CHAMP_ROUND)champ=true;}
     else elim=true;
   });
   if(champ)return "champ";
@@ -541,7 +579,7 @@ function render(){
 
   [["m","Mens Doubles",["cb-m","cb2-m"]],["w","Womens Doubles",["cb-w","cb2-w"]]].forEach(function(p){
     var ch=D.matches.filter(function(m){
-      return m.Category===p[1]&&parseInt(m.Round)===3&&m.WinnerID;
+      return m.Category===p[1]&&parseInt(m.Round)===CHAMP_ROUND&&m.WinnerID;
     });
     p[2].forEach(function(id){
       var el=document.getElementById(id);
@@ -563,153 +601,196 @@ function render(){
   buildBracket("womens","Womens Doubles");
   renderTeams("m",mT,false);
   renderTeams("w",wT,true);
+  // Connectors depend on the rendered card geometry — draw after layout settles.
+  requestAnimationFrame(drawAllConnectors);
 }
 
+// Build a full bracket tree: one column per round, cards positioned by bracket
+// seeding (Slot), with an SVG overlay linking each match to the next-round match
+// its winner feeds into (slot S -> next round slot floor(S/2)).
 function buildBracket(key,cat){
+  var treeEl=document.getElementById("bt-"+key);
+  if(!treeEl)return;
   var cm=D.matches.filter(function(m){return m.Category===cat;});
-  var rtEl=document.getElementById("rt-"+key);
-  var rcEl=document.getElementById("rc-"+key);
   if(!cm.length){
-    rtEl.innerHTML="";
-    rcEl.innerHTML='<div class="empty-state"><span class="empty-icon">&#127955;</span><div class="empty-txt">Bracket coming soon</div></div>';
-    return;
-  }
-  var activeR=RD.filter(function(r){
-    return cm.some(function(m){return parseInt(m.Round)===r.id;});
-  });
-  if(!activeR.some(function(r){return r.id===AR[key];})){
-    AR[key]=activeR[0]?activeR[0].id:1;
-  }
-  rebuildTabs(key,activeR);
-  renderRound(key,cm,AR[key]);
-}
-
-function rebuildTabs(key,activeR){
-  var cur=AR[key];
-  var h="";
-  activeR.forEach(function(r){
-    var cls="rtab"+(r.id===cur?" on":"");
-    h+="<div class='"+cls+"' onclick='tapRound(\""+key+"\","+r.id+")'>";
-    h+="<div class='rtab-lbl'>"+r.label+"</div>";
-    h+="<div class='rtab-dt'>"+r.sub+"</div>";
-    h+="</div>";
-  });
-  document.getElementById("rt-"+key).innerHTML=h;
-}
-
-function tapRound(key,rid){
-  AR[key]=rid;
-  var cat=key==="mens"?"Mens Doubles":"Womens Doubles";
-  var cm=D.matches.filter(function(m){return m.Category===cat;});
-  var activeR=RD.filter(function(r){
-    return cm.some(function(m){return parseInt(m.Round)===r.id;});
-  });
-  rebuildTabs(key,activeR);
-  renderRound(key,cm,rid);
-}
-
-function renderRound(key,cm,rid){
-  var rcEl=document.getElementById("rc-"+key);
-  var rm=cm.filter(function(m){return parseInt(m.Round)===rid;});
-  var rinfo=RD.find(function(r){return r.id===rid;})||{label:"Match",sub:""};
-  var isChamp=rid===3;
-
-  if(!rm.length){
-    rcEl.innerHTML='<div class="empty-state"><span class="empty-icon">&#9203;</span><div class="empty-txt">Not scheduled yet</div></div>';
+    treeEl.innerHTML='<div class="bt-cols"><div class="empty-state" style="margin:auto"><span class="empty-icon">&#127955;</span><div class="empty-txt">Bracket coming soon</div></div></div>';
     return;
   }
 
-  var h="";
-  rm.forEach(function(m,mi){
-    var t1=m.Team1ID?gt(m.Team1ID):null;
-    var t2=m.Team2ID?gt(m.Team2ID):null;
-    var bye=m.Team1ID&&!m.Team2ID;
-    var done=!!m.WinnerID;
-    var ready=m.Team1ID&&(m.Team2ID||bye)&&!done;
-    var cc="mcard"+(ready&&!done?" upcoming":"")+(isChamp?" champ-match":"");
-    var bc,bt;
-    if(done){bc="b-done";bt="FINAL";}
-    else if(isChamp){bc="b-champ";bt="CHAMPIONSHIP";}
-    else if(ready){bc="b-next";bt="UPCOMING";}
-    else if(bye){bc="b-bye";bt="BYE";}
-    else{bc="b-wait";bt="TBD";}
+  var bySlot=function(a,b){return parseInt(a.Slot)-parseInt(b.Slot);};
 
-    var t1w=done&&m.WinnerID===m.Team1ID;
-    var t1l=done&&m.WinnerID!==m.Team1ID&&!!m.Team2ID;
-    var t2w=done&&m.WinnerID===m.Team2ID;
-    var t2l=done&&m.WinnerID!==m.Team2ID&&!!m.Team1ID;
-    // Recount game wins from individual game scores (Score1/Score2 can be corrupted)
-    var gw1=0, gw2=0;
-    if(done){
-      [[m.G1T1,m.G1T2],[m.G2T1,m.G2T2],[m.G3T1,m.G3T2]].forEach(function(g){
-        if(g[0]!==""&&g[1]!==""){
-          var s1=parseInt(g[0]),s2=parseInt(g[1]);
-          if(!isNaN(s1)&&!isNaN(s2)&&s1!==s2){if(s1>s2)gw1++;else gw2++;}
-        }
+  // Expected match count per round, cascading from real data (each round is half
+  // the previous, rounded up). Lets an empty later round — e.g. the Championship
+  // before its feeder matches finish — still show TBD placeholder cards so the
+  // full tree shape is always visible.
+  var expected={};
+  RD.forEach(function(r,idx){
+    var n=cm.filter(function(m){return parseInt(m.Round)===r.id;}).length;
+    if(n>0)expected[r.id]=n;
+    else if(idx>0&&expected[RD[idx-1].id]>0)expected[r.id]=Math.ceil(expected[RD[idx-1].id]/2);
+    else expected[r.id]=0;
+  });
+
+  var colsH="";
+  RD.forEach(function(r){
+    // Round 1 is ordered + numbered by schedule (Match 1 = earliest). Every later
+    // round is seeded, so it is ordered + numbered by bracket position (Slot).
+    var rm=cm.filter(function(m){return parseInt(m.Round)===r.id;}).slice()
+            .sort(r.id===1?schedSort:bySlot);
+    var isChamp=r.id===CHAMP_ROUND;
+    colsH+="<div class='bt-col'>";
+    colsH+="<div class='bt-rhead"+(isChamp?" champ":"")+"'><div class='rh-lbl'>"+r.label+"</div><div class='rh-dt'>"+r.sub+"</div></div>";
+    colsH+="<div class='bt-body'>";
+    if(rm.length){
+      rm.forEach(function(m,i){
+        colsH+="<div class='bt-match' data-round='"+r.id+"' data-slot='"+parseInt(m.Slot)+"'>"+
+               matchCardHTML(m,i+1,r,isChamp)+"</div>";
       });
-    }
-
-    h+="<div class='"+cc+"'>";
-    h+="<div class='mc-head'>";
-    h+="<span class='mc-rnd'>"+rinfo.label.toUpperCase()+" &middot; MATCH "+(mi+1)+"</span>";
-    h+="<span class='mc-badge "+bc+"'>"+bt+"</span>";
-    h+="</div>";
-    h+="<div class='mc-body'>";
-
-    // Row 1
-    h+="<div class='mc-row"+(t1w?" win":"")+(t1l?" lose":"")+"'>";
-    h+="<div class='team-bubble'>"+initials(t1?t1:"?")+"</div>";
-    h+="<div class='mc-info'>";
-    h+="<div class='mc-nm'>"+(t1?t1.TeamName:"TBD")+"</div>";
-    var p1txt=m.T1Players||(t1?(t1.P1Name+" & "+t1.P2Name):"");
-    if(p1txt)h+="<div class='mc-players'>"+p1txt+"</div>";
-    h+="</div>";
-    if(t1w)h+="<div class='win-check'>&#10003;</div>";
-    h+="<div class='score-box'>"+(done?gw1:(ready?"&ndash;":""))+"</div>";
-    h+="</div>";
-
-    if(bye){
-      h+="<div class='bye-row'>&#10003; Advances automatically</div>";
-    }else{
-      h+="<div class='mc-row"+(t2w?" win":"")+(t2l?" lose":"")+"'>";
-      h+="<div class='team-bubble'>"+initials(t2?t2:"?")+"</div>";
-      h+="<div class='mc-info'>";
-      h+="<div class='mc-nm'>"+(t2?t2.TeamName:"TBD")+"</div>";
-      var p2txt=m.T2Players||(t2?(t2.P1Name+" & "+t2.P2Name):"");
-      if(p2txt)h+="<div class='mc-players'>"+p2txt+"</div>";
-      h+="</div>";
-      if(t2w)h+="<div class='win-check'>&#10003;</div>";
-      h+="<div class='score-box'>"+(done?gw2:(ready?"&ndash;":""))+"</div>";
-      h+="</div>";
-    }
-
-    h+="</div>"; // mc-body
-
-    if(done){
-      var gs=[];
-      if(m.G1T1!==""&&m.G1T2!=="")gs.push({a:m.G1T1,b:m.G1T2});
-      if(m.G2T1!==""&&m.G2T2!=="")gs.push({a:m.G2T1,b:m.G2T2});
-      if(m.G3T1!==""&&m.G3T2!=="")gs.push({a:m.G3T1,b:m.G3T2});
-      if(gs.length){
-        h+="<div class='mc-games'>";
-        var totalGs=gs.length;
-        gs.forEach(function(g,gi){
-          var t1wg=parseInt(g.a)>parseInt(g.b); // team1 wins this game
-          var winnerWinsGame=t1w?t1wg:!t1wg;    // did the match winner win this game?
-          var isDecider=done&&gi===totalGs-1&&totalGs>1; // last game played
-          // highlight: green if winner won this game; gold border if it's the decider
-          var cls="gpill"+(winnerWinsGame?" gw":"");
-          h+="<span class='"+cls+"'"+( isDecider?" style='font-weight:900;border-width:2px;'":" ")+">Game "+(gi+1)+": "+g.a+"&ndash;"+g.b+"</span>";
-        });
-        h+="</div>";
+    }else if(expected[r.id]>0){
+      for(var s=0;s<expected[r.id];s++){
+        var ph={ID:"ph-"+r.id+"-"+s,Category:cat,Round:r.id,Slot:s,Team1ID:"",Team2ID:"",
+                WinnerID:"",G1T1:"",G1T2:"",G2T1:"",G2T2:"",G3T1:"",G3T2:"",ScheduledTime:"",T1Players:"",T2Players:""};
+        colsH+="<div class='bt-match' data-round='"+r.id+"' data-slot='"+s+"'>"+
+               matchCardHTML(ph,s+1,r,isChamp)+"</div>";
       }
+    }else{
+      colsH+="<div class='bt-empty'>Not scheduled yet</div>";
     }
-
-    h+="</div>"; // mcard
+    colsH+="</div></div>";
   });
-
-  rcEl.innerHTML=h;
+  treeEl.innerHTML="<svg class='bt-svg'></svg><div class='bt-cols'>"+colsH+"</div>";
 }
+
+// Render a single match card. num = schedule-based match number for the label.
+function matchCardHTML(m,num,rinfo,isChamp){
+  var t1=m.Team1ID?gt(m.Team1ID):null;
+  var t2=m.Team2ID?gt(m.Team2ID):null;
+  var bye=m.Team1ID&&!m.Team2ID;
+  var done=!!m.WinnerID;
+  var ready=m.Team1ID&&(m.Team2ID||bye)&&!done;
+  var cc="mcard"+(ready&&!done?" upcoming":"")+(isChamp?" champ-match":"");
+  var bc,bt;
+  if(done){bc="b-done";bt="FINAL";}
+  else if(isChamp){bc="b-champ";bt="CHAMPIONSHIP";}
+  else if(ready){bc="b-next";bt="UPCOMING";}
+  else if(bye){bc="b-bye";bt="BYE";}
+  else{bc="b-wait";bt="TBD";}
+
+  var t1w=done&&m.WinnerID===m.Team1ID;
+  var t1l=done&&m.WinnerID!==m.Team1ID&&!!m.Team2ID;
+  var t2w=done&&m.WinnerID===m.Team2ID;
+  var t2l=done&&m.WinnerID!==m.Team2ID&&!!m.Team1ID;
+  // Recount game wins from individual game scores (Score1/Score2 can be corrupted)
+  var gw1=0, gw2=0;
+  if(done){
+    [[m.G1T1,m.G1T2],[m.G2T1,m.G2T2],[m.G3T1,m.G3T2]].forEach(function(g){
+      if(g[0]!==""&&g[1]!==""){
+        var s1=parseInt(g[0]),s2=parseInt(g[1]);
+        if(!isNaN(s1)&&!isNaN(s2)&&s1!==s2){if(s1>s2)gw1++;else gw2++;}
+      }
+    });
+  }
+
+  var h="<div class='"+cc+"'>";
+  h+="<div class='mc-head'>";
+  h+="<span class='mc-rnd'>"+rinfo.label.toUpperCase()+" &middot; MATCH "+num+"</span>";
+  h+="<span class='mc-badge "+bc+"'>"+bt+"</span>";
+  h+="</div>";
+  var schedTxt=m.ScheduledTime?fmtSched(m.ScheduledTime):"";
+  h+="<div class='mc-time"+(schedTxt?"":" tbd")+"'>&#128337; "+(schedTxt||"Time TBD")+"</div>";
+  h+="<div class='mc-body'>";
+
+  // Row 1
+  h+="<div class='mc-row"+(t1w?" win":"")+(t1l?" lose":"")+"'>";
+  h+="<div class='team-bubble'>"+initials(t1?t1:"?")+"</div>";
+  h+="<div class='mc-info'>";
+  h+="<div class='mc-nm'>"+(t1?t1.TeamName:"TBD")+"</div>";
+  var p1txt=m.T1Players||(t1?(t1.P1Name+" & "+t1.P2Name):"");
+  if(p1txt)h+="<div class='mc-players'>"+p1txt+"</div>";
+  h+="</div>";
+  if(t1w)h+="<div class='win-check'>&#10003;</div>";
+  h+="<div class='score-box'>"+(done?gw1:(ready?"&ndash;":""))+"</div>";
+  h+="</div>";
+
+  if(bye){
+    h+="<div class='bye-row'>&#10003; Advances automatically</div>";
+  }else{
+    h+="<div class='mc-row"+(t2w?" win":"")+(t2l?" lose":"")+"'>";
+    h+="<div class='team-bubble'>"+initials(t2?t2:"?")+"</div>";
+    h+="<div class='mc-info'>";
+    h+="<div class='mc-nm'>"+(t2?t2.TeamName:"TBD")+"</div>";
+    var p2txt=m.T2Players||(t2?(t2.P1Name+" & "+t2.P2Name):"");
+    if(p2txt)h+="<div class='mc-players'>"+p2txt+"</div>";
+    h+="</div>";
+    if(t2w)h+="<div class='win-check'>&#10003;</div>";
+    h+="<div class='score-box'>"+(done?gw2:(ready?"&ndash;":""))+"</div>";
+    h+="</div>";
+  }
+
+  h+="</div>"; // mc-body
+
+  if(done){
+    var gs=[];
+    if(m.G1T1!==""&&m.G1T2!=="")gs.push({a:m.G1T1,b:m.G1T2});
+    if(m.G2T1!==""&&m.G2T2!=="")gs.push({a:m.G2T1,b:m.G2T2});
+    if(m.G3T1!==""&&m.G3T2!=="")gs.push({a:m.G3T1,b:m.G3T2});
+    if(gs.length){
+      h+="<div class='mc-games'>";
+      var totalGs=gs.length;
+      gs.forEach(function(g,gi){
+        var t1wg=parseInt(g.a)>parseInt(g.b); // team1 wins this game
+        var winnerWinsGame=t1w?t1wg:!t1wg;    // did the match winner win this game?
+        var isDecider=gi===totalGs-1&&totalGs>1; // last game played
+        // highlight: green if winner won this game; gold border if it's the decider
+        var cls="gpill"+(winnerWinsGame?" gw":"");
+        h+="<span class='"+cls+"'"+( isDecider?" style='font-weight:900;border-width:2px;'":" ")+">Game "+(gi+1)+": "+g.a+"&ndash;"+g.b+"</span>";
+      });
+      h+="</div>";
+    }
+  }
+
+  h+="</div>"; // mcard
+  return h;
+}
+
+// Draw the elbow connector lines once the cards have a measurable layout.
+// Each match (round r, slot s) connects to its parent (round r+1, slot s/2).
+// Draw the seeded bracket-feed connector lines. Round 1 is ordered by schedule,
+// so its lines into Round 2 may cross; Round 2 onward is seeded, so those align.
+var SHOW_CONNECTORS=true;
+function drawConnectors(key){
+  var treeEl=document.getElementById("bt-"+key);
+  if(!treeEl||!treeEl.offsetParent)return; // skip hidden pages
+  var svg=treeEl.querySelector(".bt-svg");
+  if(!svg)return;
+  if(!SHOW_CONNECTORS){svg.innerHTML="";return;}
+  var W=treeEl.offsetWidth, H=treeEl.offsetHeight;
+  svg.setAttribute("width",W);
+  svg.setAttribute("height",H);
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  var base=treeEl.getBoundingClientRect();
+  var matches=treeEl.querySelectorAll(".bt-match");
+  var pos={};
+  matches.forEach(function(c){
+    var rc=c.getBoundingClientRect();
+    pos[c.getAttribute("data-round")+"-"+c.getAttribute("data-slot")]={
+      l:rc.left-base.left, r:rc.right-base.left, y:rc.top-base.top+rc.height/2
+    };
+  });
+  var d="";
+  matches.forEach(function(c){
+    var rnd=parseInt(c.getAttribute("data-round")),slot=parseInt(c.getAttribute("data-slot"));
+    var me=pos[rnd+"-"+slot], par=pos[(rnd+1)+"-"+Math.floor(slot/2)];
+    if(!me||!par)return;
+    var mx=Math.round((me.r+par.l)/2);
+    d+="<path d='M"+Math.round(me.r)+" "+Math.round(me.y)+" H"+mx+" V"+Math.round(par.y)+" H"+Math.round(par.l)+"'/>";
+  });
+  svg.innerHTML=d;
+}
+
+function drawAllConnectors(){drawConnectors("mens");drawConnectors("womens");}
+var _rzT;
+window.addEventListener("resize",function(){clearTimeout(_rzT);_rzT=setTimeout(drawAllConnectors,120);});
 
 function renderTeams(key,teams,isW){
   var grid=document.getElementById("grid-"+key);

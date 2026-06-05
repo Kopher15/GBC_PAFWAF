@@ -33,9 +33,10 @@ var MAX_TEAMS    = 12;
 var GAMES_TO_WIN = 2;
 
 var ROUNDS = [
-  { id: 1, label: "Round 1 - Elimination", short: "R1", date: "Saturday, June 6, 2026"  },
-  { id: 2, label: "Round 2 - Winners",     short: "R2", date: "Saturday, June 13, 2026" },
-  { id: 3, label: "Championship",          short: "CH", date: "Saturday, June 20, 2026" }
+  { id: 1, label: "Round 1",      short: "R1", date: "Saturday, June 6, 2026"  },
+  { id: 2, label: "Round 2",      short: "R2", date: "Saturday, June 13, 2026" },
+  { id: 3, label: "Round 3",      short: "R3", date: "Saturday, June 20, 2026" },
+  { id: 4, label: "Championship", short: "CH", date: "Saturday, June 20, 2026" }
 ];
 
 // Column layouts (single source of truth for migration)
@@ -335,7 +336,8 @@ function buildConfirmEmail(m) {
     "TOURNAMENT DATES:\n" +
     "  Round 1      - Saturday, June 6, 2026\n" +
     "  Round 2      - Saturday, June 13, 2026\n" +
-    "  Championship - Saturday, June 20, 2026\n\n" +
+    "  Round 3      - Saturday, June 20, 2026\n" +
+    "  Championship - Saturday, June 20, 2026 (follows Round 3)\n\n" +
     "VENUE: 62-B Happy Valley, Cebu City\n" +
     "FORMAT: Single Elimination | Best of 3 Games per Match\n\n" +
     "REMINDERS:\n" +
@@ -709,7 +711,7 @@ function updateRow(ss, tab, id, updates) {
 }
 
 function advanceWinner(ss, category, round, slot, wid) {
-  var nr = round + 1; if (nr > 3) return;
+  var nr = round + 1; if (nr > 4) return;
   var ns = Math.floor(slot / 2);
   var isT1 = slot % 2 === 0;
   var sheet = ss.getSheetByName(TAB_MATCHES);
@@ -788,6 +790,13 @@ function createManualBracket(category, pairings) {
     var r3n = Math.ceil(r2n / 2);
     for (var k = 0; k < r3n; k++) {
       ms.appendRow([makeUID(), category, 3, k,
+        "","","","","","","","","","","", now, "","",""]);
+    }
+
+    // Round 4 (Championship) placeholder slots
+    var r4n = Math.ceil(r3n / 2);
+    for (var q = 0; q < r4n; q++) {
+      ms.appendRow([makeUID(), category, 4, q,
         "","","","","","","","","","","", now, "","",""]);
     }
 

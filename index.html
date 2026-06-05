@@ -117,9 +117,10 @@ var A={teams:[],matches:[],emails:[],tab:"dashboard",bcat:"Mens Doubles",bmode:"
 var SKILL_COLORS={"Beginner":"#38bdf8","Intermediate":"#f59e0b","Advanced":"#ef4444"};
 var SKILL_ORDER=["Advanced","Intermediate","Beginner"];
 var RD=[
-  {id:1,label:"Round 1 - Elimination",short:"R1",date:"Saturday, June 6, 2026",  col:"#38bdf8"},
-  {id:2,label:"Round 2 - Winners",    short:"R2",date:"Saturday, June 13, 2026", col:"#f59e0b"},
-  {id:3,label:"Championship",         short:"CH",date:"Saturday, June 20, 2026", col:"#afe409"}
+  {id:1,label:"Round 1",     short:"R1",date:"Saturday, June 6, 2026",  col:"#38bdf8"},
+  {id:2,label:"Round 2",     short:"R2",date:"Saturday, June 13, 2026", col:"#f59e0b"},
+  {id:3,label:"Round 3",     short:"R3",date:"Saturday, June 20, 2026", col:"#a78bfa"},
+  {id:4,label:"Championship",short:"CH",date:"Saturday, June 20, 2026 · follows Round 3", col:"#afe409"}
 ];
 var CATS=["Mens Doubles","Womens Doubles"];
 var LBL={"Mens Doubles":"Men's Doubles","Womens Doubles":"Women's Doubles"};
@@ -134,6 +135,26 @@ function v(i){var e=$(i);return e?e.value.trim():"";}
 function tx(i,s){var e=$(i);if(e)e.textContent=s;}
 function gt(id){for(var i=0;i<A.teams.length;i++)if(A.teams[i].ID===id)return A.teams[i];return null;}
 function gr(id){for(var i=0;i<RD.length;i++)if(RD[i].id===id)return RD[i];return RD[0];}
+// Order matches by their scheduled time (earliest first). Unscheduled matches
+// fall to the end, ordered by Slot. Match numbers follow this same sequence.
+// Parse a stored schedule value. The sheet stores a locale string like
+// "6/6/2026, 10:15:00 PM" — parse it as-is FIRST; the .replace fallback is only
+// for the "2026-06-06 10:15" form and would corrupt the locale string to NaN.
+function schedMs(dt){
+  if(!dt)return NaN;
+  var s=String(dt);
+  var t=new Date(s).getTime();
+  if(isNaN(t))t=new Date(s.replace(" ","T")).getTime();
+  return t;
+}
+function schedSort(a,b){
+  var ta=schedMs(a.ScheduledTime),tb=schedMs(b.ScheduledTime);
+  var va=isNaN(ta),vb=isNaN(tb);
+  if(!va&&!vb)return ta-tb;
+  if(!va&&vb)return -1;
+  if(va&&!vb)return 1;
+  return parseInt(a.Slot)-parseInt(b.Slot);
+}
 function pill(l,c){return '<span class="pill" style="background:'+c+'22;color:'+c+';border:1px solid '+c+'44">'+l+'</span>';}
 
 function toast(msg,col){
@@ -357,7 +378,8 @@ function dBracket(){
   h+='<div style="display:flex;gap:0;align-items:flex-start;min-width:640px">';
 
   RD.forEach(function(r,ri){
-    var rm=cm.filter(function(m){return parseInt(m.Round)===r.id;});
+    var rm=cm.filter(function(m){return parseInt(m.Round)===r.id;})
+             .sort(r.id===1?schedSort:function(a,b){return parseInt(a.Slot)-parseInt(b.Slot);});
     var done=rm.filter(function(m){return m.WinnerID;}).length;
     var playable=rm.filter(function(m){return m.Team1ID&&m.Team2ID;}).length;
 
@@ -379,7 +401,7 @@ function dBracket(){
          '<div style="font-size:10px;color:#5a6e5a">TBD</div></div>';
     }
 
-    rm.forEach(function(m){
+    rm.forEach(function(m,mi){
       var t1=gt(m.Team1ID),t2=m.Team2ID?gt(m.Team2ID):null;
       var bye=m.Team1ID&&!m.Team2ID,done=!!m.WinnerID,ready=m.Team1ID&&(m.Team2ID||bye)&&!done;
       var st=done?'<span style="color:#afe409;font-size:9px">DONE</span>':
@@ -399,7 +421,7 @@ function dBracket(){
       var sk1=t1&&t1.SkillLevel?'<span style="font-size:8px;color:'+SKILL_COLORS[t1.SkillLevel]+';margin-left:4px">['+t1.SkillLevel+']</span>':'';
       var sk2=t2&&t2.SkillLevel?'<span style="font-size:8px;color:'+SKILL_COLORS[t2.SkillLevel]+';margin-left:4px">['+t2.SkillLevel+']</span>':'';
       h+='<div class="mc" style="border:1px solid '+bc+';margin-bottom:8px">'+
-         '<div class="mh" style="color:'+r.col+'"><span>'+r.short+' #'+(parseInt(m.Slot)+1)+'</span>'+st+'</div>'+
+         '<div class="mh" style="color:'+r.col+'"><span>'+r.short+' #'+(mi+1)+'</span>'+st+'</div>'+
          '<div class="mr" style="'+b1+'">'+
            '<span style="font-size:12px;font-weight:700;color:'+c1+'">'+(t1?t1.TeamName+(m.WinnerID===m.Team1ID?" &#127942;":""):"TBD")+sk1+'</span>'+
            '<span class="ms" style="color:'+c1+'">'+(done?m.Score1:"&ndash;")+'</span>'+
@@ -572,15 +594,16 @@ function buildSchedulePanel(cm){
   // Individual match schedule
   h+='<div style="font-size:10px;font-weight:700;color:#5a6e5a;letter-spacing:1px;margin-bottom:10px">INDIVIDUAL MATCH TIMES</div>';
   RD.forEach(function(r){
-    var rm=playable.filter(function(m){return parseInt(m.Round)===r.id;});
+    var rm=playable.filter(function(m){return parseInt(m.Round)===r.id;})
+                   .sort(r.id===1?schedSort:function(a,b){return parseInt(a.Slot)-parseInt(b.Slot);});
     if(!rm.length)return;
     h+='<div style="font-size:10px;color:'+r.col+';font-weight:700;margin:10px 0 6px;letter-spacing:1px">'+r.label.toUpperCase()+'</div>';
-    rm.forEach(function(m){
+    rm.forEach(function(m,mi){
       var t1=gt(m.Team1ID),t2=gt(m.Team2ID);
       var t1n=t1?t1.TeamName:"TBD",t2n=t2?t2.TeamName:"TBD";
       h+='<div style="background:#080d08;border:1px solid #1a271a;border-radius:5px;padding:10px 12px;margin-bottom:8px">';
       h+='<div style="font-size:12px;font-weight:700;margin-bottom:8px">'+
-         '<span style="color:'+r.col+';font-size:9px;margin-right:6px">'+r.short+' #'+(parseInt(m.Slot)+1)+'</span>'+
+         '<span style="color:'+r.col+';font-size:9px;margin-right:6px">'+r.short+' #'+(mi+1)+'</span>'+
          t1n+' <span style="color:#5a6e5a;font-weight:400">vs</span> '+t2n+'</div>';
       h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">';
       h+='<div style="flex:1;min-width:180px"><label>Date &amp; Time</label>'+
@@ -600,7 +623,8 @@ function buildSchedulePanel(cm){
 
 // ── Scores ─────────────────────────────────────────────────────────────────────
 function dScores(){
-  var pend=A.matches.filter(function(m){return m.Team1ID&&m.Team2ID&&!m.WinnerID;});
+  var pend=A.matches.filter(function(m){return m.Team1ID&&m.Team2ID&&!m.WinnerID;})
+                     .sort(function(a,b){return (parseInt(a.Round)-parseInt(b.Round))||schedSort(a,b);});
   var done=A.matches.filter(function(m){return m.WinnerID;});
   var h='<div class="card"><div class="ct">Pending Matches ('+(pend.length)+')</div>';
   if(!pend.length)h+='<div class="mu">No pending matches. Build a bracket in the Bracket tab first.</div>';
@@ -616,7 +640,7 @@ function dScores(){
   h+='</div><div class="card"><div class="ct">Completed ('+done.length+')</div>';
   if(!done.length)h+='<div class="mu">No completed matches yet.</div>';
   RD.forEach(function(r){
-    var rd=done.filter(function(m){return parseInt(m.Round)===r.id;});if(!rd.length)return;
+    var rd=done.filter(function(m){return parseInt(m.Round)===r.id;}).sort(schedSort);if(!rd.length)return;
     h+='<div style="font-size:10px;color:'+r.col+';font-weight:700;margin:10px 0 8px">'+r.label+'</div>';
     rd.forEach(function(m){
       var t1=gt(m.Team1ID),t2=gt(m.Team2ID),wt=gt(m.WinnerID);
@@ -835,7 +859,9 @@ function autoSchedule(){
 function fmtDT(dt){
   if(!dt)return"";
   try{
-    var d=new Date(String(dt).replace(" ","T"));
+    var s=String(dt);
+    var d=new Date(s);
+    if(isNaN(d.getTime()))d=new Date(s.replace(" ","T"));
     if(isNaN(d.getTime()))return dt;
     var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
     var h=d.getHours(),m=d.getMinutes();
